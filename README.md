@@ -2,6 +2,8 @@
 
 Emulator PlayStation 1 yang jalan langsung di browser, desktop maupun HP.
 
+**Main sekarang: https://akbarmaliki.github.io/play-1/**
+
 - **BIOS dan game di-upload dari perangkatmu sendiri.** File dibaca di browser dan tidak dikirim ke server mana pun. BIOS disimpan di IndexedDB browser, jadi cukup upload sekali.
 - **Kontrol sentuh untuk mobile**: D-pad dengan diagonal, △ ○ ✕ □, L1/L2/R1/R2, Select/Start, multi-touch, dan jari bisa digeser antar tombol. Layout menyesuaikan mode portrait dan landscape.
 - **Gamepad fisik** (USB/Bluetooth) lewat Gamepad API, termasuk di Chrome Android.
