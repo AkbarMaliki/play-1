@@ -1,0 +1,14 @@
+# Jangan pernah commit BIOS atau file game
+*.bin
+*.BIN
+*.cue
+*.chd
+*.pbp
+*.iso
+*.img
+*.m3u
+*.srm
+*.state*
+bios/
+roms/
+games/

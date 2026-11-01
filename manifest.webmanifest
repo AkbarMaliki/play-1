@@ -1,0 +1,14 @@
+{
+  "name": "Play-1",
+  "short_name": "Play-1",
+  "description": "Emulator PS1 di browser dengan kontrol sentuh",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#0d0f14",
+  "theme_color": "#0d0f14",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0d0f14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Play-1</title>
+  <meta name="description" content="Emulator PS1 di browser. BIOS dan game di-upload dari perangkatmu sendiri, dengan kontrol sentuh untuk mobile.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- ========== Layar setup ========== -->
+  <main id="setup" class="setup">
+    <header class="brand">
+      <img src="icon.svg" alt="" width="44" height="44">
+      <div>
+        <h1>Play-1</h1>
+        <p>Emulator PS1 di browser, file kamu tetap di perangkat sendiri.</p>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>1. BIOS</h2>
+        <span id="biosStatus" class="pill">Belum ada</span>
+      </div>
+      <p class="hint">Pilih file BIOS hasil dump dari konsolmu (mis. <code>scph5501.bin</code>, <code>scph1001.bin</code>, <code>scph7001.bin</code>). Disimpan di browser ini saja, jadi cukup upload sekali.</p>
+      <div class="row">
+        <label class="btn">
+          <input id="biosInput" type="file" accept=".bin,.BIN,.rom" hidden>
+          Upload BIOS
+        </label>
+        <button id="biosClear" class="btn ghost" type="button" hidden>Hapus BIOS</button>
+      </div>
+      <p class="hint small">Tanpa BIOS, emulator memakai HLE BIOS bawaan. Banyak game tetap jalan, tapi sebagian tidak.</p>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>2. Game</h2>
+        <span id="gameStatus" class="pill">Belum dipilih</span>
+      </div>
+      <p class="hint">Format: <code>.chd</code>, <code>.pbp</code>, <code>.iso</code>, atau <code>.cue</code> + semua <code>.bin</code>-nya (pilih bersamaan). Untuk mobile, <code>.chd</code>/<code>.pbp</code> paling hemat memori.</p>
+      <label class="btn">
+        <input id="gameInput" type="file" multiple accept=".chd,.pbp,.iso,.img,.cue,.bin,.m3u,.exe,.CHD,.PBP,.ISO,.IMG,.CUE,.BIN,.M3U">
+        Pilih file game
+      </label>
+      <ul id="gameFiles" class="files"></ul>
+    </section>
+
+    <button id="startBtn" class="btn primary big" type="button" disabled>Mulai main</button>
+    <p id="setupError" class="error" role="alert" hidden></p>
+
+    <details class="card keys">
+      <summary>Kontrol keyboard &amp; gamepad</summary>
+      <table>
+        <tr><td>D-pad</td><td><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></td></tr>
+        <tr><td>✕ / ○ / □ / △</td><td><kbd>Z</kbd> <kbd>X</kbd> <kbd>A</kbd> <kbd>S</kbd></td></tr>
+        <tr><td>L1 / R1</td><td><kbd>Q</kbd> <kbd>W</kbd></td></tr>
+        <tr><td>L2 / R2</td><td><kbd>E</kbd> <kbd>R</kbd></td></tr>
+        <tr><td>Start / Select</td><td><kbd>Enter</kbd> <kbd>Shift kanan</kbd></td></tr>
+      </table>
+      <p class="hint small">Gamepad USB/Bluetooth (termasuk di HP Android) langsung terdeteksi lewat Gamepad API. Tekan tombol apa saja di gamepad setelah game mulai.</p>
+    </details>
+
+    <footer class="foot">
+      Ditenagai <a href="https://nostalgist.js.org" target="_blank" rel="noopener">Nostalgist.js</a> + core libretro PCSX ReARMed. Tidak ada BIOS atau game yang disertakan.
+    </footer>
+  </main>
+
+  <!-- ========== Layar main ========== -->
+  <div id="player" class="player" hidden>
+    <div class="topbar">
+      <span id="gameTitle" class="title"></span>
+      <button id="menuBtn" class="icon-btn" type="button" aria-label="Menu" aria-expanded="false">☰</button>
+    </div>
+
+    <div id="menu" class="menu" hidden>
+      <button type="button" data-cmd="save">💾 Simpan state</button>
+      <button type="button" data-cmd="load">📂 Muat state</button>
+      <button type="button" data-cmd="pause">⏸ Pause</button>
+      <button type="button" data-cmd="reset">↺ Reset</button>
+      <button type="button" data-cmd="fullscreen">⛶ Layar penuh</button>
+      <button type="button" data-cmd="pad">🎮 Sembunyikan kontrol</button>
+      <button type="button" data-cmd="exit" class="danger">✕ Keluar</button>
+    </div>
+
+    <div id="screen" class="screen">
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p id="loadingText">Memuat…</p>
+      </div>
+    </div>
+
+    <!-- Kontrol sentuh. data-btn = nama tombol RetroPad yang dikirim ke Nostalgist -->
+    <div id="pad" class="pad">
+      <div class="shoulders left">
+        <div class="sbtn" data-btn="l2">L2</div>
+        <div class="sbtn" data-btn="l">L1</div>
+      </div>
+      <div class="shoulders right">
+        <div class="sbtn" data-btn="r">R1</div>
+        <div class="sbtn" data-btn="r2">R2</div>
+      </div>
+
+      <div id="dpad" class="dpad" data-dpad>
+        <span class="arm up"></span><span class="arm down"></span>
+        <span class="arm left"></span><span class="arm right"></span>
+        <span class="hub"></span>
+      </div>
+
+      <div class="face">
+        <div class="fbtn tri" data-btn="x">△</div>
+        <div class="fbtn sq" data-btn="y">□</div>
+        <div class="fbtn ci" data-btn="a">○</div>
+        <div class="fbtn cr" data-btn="b">✕</div>
+      </div>
+
+      <div class="mid">
+        <div class="mbtn" data-btn="select">SELECT</div>
+        <div class="mbtn" data-btn="start">START</div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" role="status" hidden></div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
