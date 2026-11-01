@@ -121,6 +121,54 @@ a { color: var(--accent); }
 .files li span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
 .files li.main span:first-child::after { content: "  • utama"; color: var(--accent); }
 
+.check { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.check input { margin-top: 2px; width: 18px; height: 18px; accent-color: var(--accent); flex: none; }
+
+.library { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.library li { display: flex; gap: 8px; }
+.lib-play {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.lib-play:hover { border-color: var(--accent); }
+.lib-play::before {
+  content: "▶";
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+}
+.lib-text { min-width: 0; display: flex; flex-direction: column; }
+.lib-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lib-meta { font-size: 12px; color: var(--muted); }
+.lib-del {
+  flex: none;
+  width: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.lib-del:hover { color: var(--danger); border-color: var(--danger); }
+
 .error {
   margin: 0;
   color: var(--danger);

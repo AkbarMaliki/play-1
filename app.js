@@ -120,7 +120,9 @@ function orderGameFiles(files) {
 }
 
 function formatSize(bytes) {
-  return bytes > 1e9 ? `${(bytes / 1e9).toFixed(2)} GB` : `${(bytes / 1e6).toFixed(1)} MB`;
+  if (bytes > 1e9) return `${(bytes / 1e9).toFixed(2)} GB`;
+  if (bytes > 1e6) return `${(bytes / 1e6).toFixed(1)} MB`;
+  return `${Math.ceil(bytes / 1e3)} KB`;
 }
 
 function renderGame() {
@@ -166,11 +168,12 @@ function hideError() {
 }
 
 // ---------- Main ----------
-$('#startBtn').addEventListener('click', start);
+$('#startBtn').addEventListener('click', () => start(state.game, null));
 
-async function start() {
+// files: File[] dengan file utama di index 0. libraryId: id di library kalau dimainkan dari sana.
+async function start(files, libraryId) {
   hideError();
-  const main = state.game[0];
+  const main = files[0];
   if (!main) return;
   state.gameKey = baseName(main.name);
 
@@ -189,7 +192,7 @@ async function start() {
     state.emu = await Nostalgist.launch({
       element: canvas,
       core: 'pcsx_rearmed',
-      rom: state.game,
+      rom: files,
       bios: state.bios ? { fileName: state.bios.name, fileContent: state.bios.blob } : undefined,
       sram: sram instanceof Blob ? sram : undefined,
       retroarchConfig: KEYS,
@@ -210,13 +213,125 @@ async function start() {
   state.sramTimer = setInterval(persistSram, 60_000);
   requestWakeLock();
   if (!state.bios) toast('Jalan dengan HLE BIOS. Kalau game macet, upload BIOS asli.');
+
+  // Simpan ke library hanya setelah game terbukti bisa jalan.
+  if (libraryId) updateLibraryEntry(libraryId, { lastPlayed: Date.now() });
+  else if ($('#saveToLibrary').checked) saveToLibrary(files);
 }
 
 function backToSetup() {
   $('#player').hidden = true;
   $('#setup').hidden = false;
   $('#menu').hidden = true;
+  renderLibrary();
 }
+
+// ---------- Library game tersimpan ----------
+// Metadata ada di key 'library', isi file di 'gamedata:<id>' supaya daftar bisa
+// ditampilkan tanpa menyentuh file game yang besar.
+const gameId = (files) => `${baseName(files[0].name)}|${files.reduce((n, f) => n + f.size, 0)}`;
+const loadLibrary = async () => (await store.get('library')) ?? [];
+
+async function saveToLibrary(files) {
+  const id = gameId(files);
+  if ((await loadLibrary()).some((g) => g.id === id)) {
+    await updateLibraryEntry(id, { lastPlayed: Date.now() });
+    return;
+  }
+  toast('Menyimpan game ke daftar…');
+  try {
+    // Minta penyimpanan permanen supaya browser tidak menghapus data saat memori menipis.
+    await navigator.storage?.persist?.().catch(() => {});
+    await store.set(`gamedata:${id}`, files.map((f) => ({ name: f.name, blob: f })));
+    const entry = {
+      id,
+      title: baseName(files[0].name),
+      size: files.reduce((n, f) => n + f.size, 0),
+      addedAt: Date.now(),
+      lastPlayed: Date.now(),
+    };
+    await store.set('library', [entry, ...(await loadLibrary()).filter((g) => g.id !== id)]);
+    toast('Game tersimpan, lain kali tinggal tap');
+  } catch (err) {
+    console.warn(err);
+    await store.del(`gamedata:${id}`).catch(() => {});
+    toast(err?.name === 'QuotaExceededError' ? 'Penyimpanan browser penuh, game tidak disimpan' : 'Gagal menyimpan game');
+  }
+  if (!$('#setup').hidden) renderLibrary();
+}
+
+async function updateLibraryEntry(id, patch) {
+  const lib = await loadLibrary();
+  await store.set('library', lib.map((g) => (g.id === id ? { ...g, ...patch } : g))).catch(() => {});
+}
+
+async function removeFromLibrary(id) {
+  await store.del(`gamedata:${id}`).catch(() => {});
+  await store.set('library', (await loadLibrary()).filter((g) => g.id !== id)).catch(() => {});
+  renderLibrary();
+}
+
+async function playFromLibrary(id) {
+  hideError();
+  const files = await store.get(`gamedata:${id}`);
+  if (!files?.length) {
+    showError('Data game ini sudah tidak ada di browser (mungkin dihapus browser karena memori penuh). Upload ulang game-nya.');
+    removeFromLibrary(id);
+    return;
+  }
+  start(files.map((f) => new File([f.blob], f.name)), id);
+}
+
+const relTime = new Intl.RelativeTimeFormat('id', { numeric: 'auto' });
+function timeAgo(ts) {
+  const min = Math.round((ts - Date.now()) / 60000);
+  if (min > -60) return relTime.format(min, 'minute');
+  if (min > -1440) return relTime.format(Math.round(min / 60), 'hour');
+  return relTime.format(Math.round(min / 1440), 'day');
+}
+
+async function renderLibrary() {
+  const lib = (await loadLibrary()).sort((a, b) => b.lastPlayed - a.lastPlayed);
+  $('#librarySection').hidden = lib.length === 0;
+  $('#library').replaceChildren(
+    ...lib.map((g) => {
+      const li = document.createElement('li');
+      const play = document.createElement('button');
+      play.type = 'button';
+      play.className = 'lib-play';
+      play.dataset.play = g.id;
+      const text = document.createElement('span');
+      text.className = 'lib-text';
+      const title = document.createElement('span');
+      title.className = 'lib-title';
+      title.textContent = g.title;
+      const meta = document.createElement('span');
+      meta.className = 'lib-meta';
+      meta.textContent = `${formatSize(g.size)} · dimainkan ${timeAgo(g.lastPlayed)}`;
+      text.append(title, meta);
+      play.append(text);
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'lib-del';
+      del.dataset.del = g.id;
+      del.setAttribute('aria-label', `Hapus ${g.title}`);
+      del.textContent = '✕';
+      li.append(play, del);
+      return li;
+    }),
+  );
+  const est = await navigator.storage?.estimate?.().catch(() => null);
+  $('#storageInfo').textContent = est ? `${formatSize(est.usage)} terpakai` : '';
+}
+
+$('#library').addEventListener('click', (e) => {
+  const playId = e.target.closest('[data-play]')?.dataset.play;
+  if (playId) return playFromLibrary(playId);
+  const delId = e.target.closest('[data-del]')?.dataset.del;
+  if (!delId) return;
+  const title = delId.split('|')[0];
+  if (confirm(`Hapus "${title}" dari daftar? Save state dan memory card-nya tetap disimpan.`)) removeFromLibrary(delId);
+});
 
 async function exitGame() {
   await persistSram();
@@ -489,4 +604,5 @@ function localStorageSet(key, value) {
   if (saved?.blob) state.bios = saved;
   renderBios();
   renderGame();
+  renderLibrary();
 })();

@@ -25,12 +25,20 @@
       </div>
     </header>
 
+    <section id="librarySection" class="card" hidden>
+      <div class="card-head">
+        <h2>Game tersimpan</h2>
+        <span id="storageInfo" class="pill"></span>
+      </div>
+      <ul id="library" class="library"></ul>
+    </section>
+
     <section class="card">
       <div class="card-head">
         <h2>1. BIOS</h2>
         <span id="biosStatus" class="pill">Belum ada</span>
       </div>
-      <p class="hint">Pilih file BIOS hasil dump dari konsolmu (mis. <code>scph5501.bin</code>, <code>scph1001.bin</code>, <code>scph7001.bin</code>). Disimpan di browser ini saja, jadi cukup upload sekali.</p>
+      <p class="hint">Pilih file BIOS hasil dump dari konsolmu (mis. <code>scph5501.bin</code>, <code>scph1001.bin</code>, <code>scph7001.bin</code>). Disimpan di browser ini dan otomatis dipakai lagi setiap kali buka halaman, jadi cukup upload sekali.</p>
       <div class="row">
         <label class="btn">
           <input id="biosInput" type="file" accept=".bin,.BIN,.rom" hidden>
@@ -52,6 +60,10 @@
         Pilih file game
       </label>
       <ul id="gameFiles" class="files"></ul>
+      <label class="check">
+        <input id="saveToLibrary" type="checkbox" checked>
+        <span>Simpan ke daftar "Game tersimpan" supaya lain kali tinggal tap, tanpa pilih file lagi. Game disalin ke penyimpanan browser, jadi butuh ruang sebesar file game-nya.</span>
+      </label>
     </section>
 
     <button id="startBtn" class="btn primary big" type="button" disabled>Mulai main</button>
